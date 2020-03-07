@@ -1,0 +1,449 @@
+* Minimal Emacs Config
+** Environment
+*** Package Install Tool
+#+BEGIN_SRC emacs-lisp
+(require 'package)
+(setq package-enable-at-startup nil)
+
+(unless (assoc-default "melpa" package-archives)
+  (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t))
+(unless (assoc-default "org" package-archives)
+  (add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/") t))
+(unless (assoc-default "marmalade" package-archives)
+  (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
+(package-initialize)
+
+(unless (package-installed-p 'use-package)
+  (package-refresh-contents)
+  (package-install 'use-package))
+
+(eval-when-compile
+  (require 'use-package))
+(setq use-package-verbose t)
+(setq use-package-always-ensure t)
+#+END_SRC
+
+*** Encoding and Envs
+#+BEGIN_SRC emacs-lisp
+(prefer-coding-system 'utf-8)
+
+(setenv "LANG" "en_US.UTF-8")
+(setenv	"LC_ALL" "en_US.UTF-8")
+(setenv	"LC_CTYPE" "en_US.UTF-8")
+#+END_SRC
+
+*** Feature Mode
+
+#+BEGIN_SRC emacs-lisp
+(display-time-mode 1)
+(column-number-mode 1)
+(show-paren-mode nil)
+(display-battery-mode 1)
+(tool-bar-mode -1)
+(menu-bar-mode -1)
+(toggle-scroll-bar -1)
+(global-auto-revert-mode t)
+(global-hl-line-mode nil)
+
+(fset 'yes-or-no-p 'y-or-n-p)
+(toggle-frame-fullscreen)
+#+END_SRC
+
+*** File Operation
+
+#+BEGIN_SRC emacs-lisp
+(setq tab-width 4
+      inhibit-splash-screen t
+      initial-scratch-message nil
+      sentence-end-double-space nil
+      make-backup-files nil
+      indent-tabs-mode nil
+      make-backup-files nil
+      auto-save-default nil)
+#+END_SRC
+
+*** History
+#+BEGIN_SRC emacs-lisp
+(savehist-mode 1)
+(setq savehist-file "~/.emacs.d/.savehist")
+(setq history-length t)
+(setq history-delete-duplicates t)
+(setq savehist-save-minibuffer-history 1)
+(setq savehist-additional-variables
+      '(kill-ring
+        search-ring
+        regexp-search-ring))
+#+END_SRC
+
+*** MacOS System
+#+BEGIN_SRC emacs-lisp
+(cond ((string-equal system-type "darwin")
+       (progn
+	 ;; modify option and command key
+	 (setq mac-command-modifier 'control)
+	 (setq mac-option-modifier 'meta)
+
+	 ;; batter copy and paste support for mac os x
+	 (defun copy-from-osx ()
+	   (shell-command-to-string "pbpaste"))
+	 (defun paste-to-osx (text &optional push)
+	   (let ((process-connection-type nil))
+	     (let ((proc (start-process "pbcopy" "*Messages*" "pbcopy")))
+	       (process-send-string proc text)
+	       (process-send-eof proc))))
+	 (setq interprogram-cut-function 'paste-to-osx)
+	 (setq interprogram-paste-function 'copy-from-osx)
+
+	 (message "Wellcome To Mac OS X, Have A Nice Day!!!"))))
+#+END_SRC
+
+*** Performance
+#+BEGIN_SRC emacs-lisp
+(setq gc-cons-threshold 1000000000)
+(setq read-process-output-max (* 1024 1024 1024)) ;; 1gb
+#+END_SRC
+** Appearance
+*** Titlebar
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+(add-to-list 'default-frame-alist '(ns-appearance . dark))
+
+(set-face-background 'vertical-border (face-background 'default))
+(set-face-foreground 'vertical-border "grey")
+#+END_SRC
+*** Doom Theme
+#+BEGIN_SRC emacs-lisp
+(setq custom-safe-themes t)
+
+(use-package doom-themes)
+(load-theme 'doom-molokai)
+
+(use-package doom-modeline
+  :ensure t
+  :hook (after-init . doom-modeline-mode))
+#+END_SRC
+*** Rainbow
+#+BEGIN_SRC emacs-lisp
+(use-package rainbow-mode
+  :config
+  (progn
+    (defun pkg-enable-rainbow ()
+      (rainbow-mode t))
+    (add-hook 'prog-mode-hook 'pkg-enable-rainbow)
+))
+(use-package rainbow-delimiters
+  :config
+  (progn
+    (defun pkg-enable-rainbow-delimiters ()
+      (rainbow-delimiters-mode t))
+    (add-hook 'prog-mode-hook 'pkg-enable-rainbow-delimiters)))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+
+#+END_SRC
+
+** Tools
+*** Undo Tree
+#+BEGIN_SRC emacs-lisp
+(use-package undo-tree
+  :ensure t
+  :config
+  (progn
+    (global-undo-tree-mode)
+    (setq undo-tree-visualizer-timestamps t)
+    (setq undo-tree-visualizer-diff t)
+    ))
+#+END_SRC
+
+*** Display Keybind
+#+BEGIN_SRC emacs-lisp
+(use-package which-key
+  :config
+  (progn
+    (which-key-mode)
+    (which-key-setup-side-window-bottom)))
+#+END_SRC
+
+*** Recent File
+#+BEGIN_SRC emacs-lisp
+(use-package recentf
+  :config
+  (progn
+    (setq recentf-max-saved-items 200
+	  recentf-max-menu-items 15)
+    (recentf-mode)
+    ))
+#+END_SRC
+
+*** Line Number
+#+BEGIN_SRC emacs-lisp
+(use-package linum
+  :init
+  (progn
+    (global-linum-mode t)
+    (setq linum-format "%4d  ")
+    ))
+#+END_SRC
+*** Auto Pair Bracket
+#+BEGIN_SRC emacs-lisp
+(use-package autopair
+  :config (autopair-global-mode))
+#+END_SRC
+*** Neotree Sidebar
+#+BEGIN_SRC emacs-lisp
+(use-package neotree
+  :config
+  (progn
+    (setq neo-smart-open t)
+    (setq neo-theme (if (display-graphic-p) 'icons 'nerd))
+    (setq neo-window-fixed-size nil)
+    ;; (setq-default neo-show-hidden-files nil)
+    (global-set-key [f2] 'neotree-toggle)
+    (global-set-key [f8] 'neotree-dir)))
+#+END_SRC
+*** Git Tool
+#+BEGIN_SRC emacs-lisp
+(use-package magit)
+
+(use-package git-gutter+
+  :ensure t
+  :config
+  (progn
+    (global-git-gutter+-mode)))
+#+END_SRC
+*** Sinppet Management
+#+BEGIN_SRC emacs-lisp
+(use-package yasnippet
+  :diminish yas-minor-mode
+  :init (yas-global-mode)
+  :config
+  (progn
+    (yas-global-mode)
+    (add-hook 'hippie-expand-try-functions-list 'yas-hippie-try-expand)
+    (setq yas-key-syntaxes '("w_" "w_." "^ "))
+    ;; (setq yas-installed-snippets-dir "~/elisp/yasnippet-snippets")
+    (setq yas-expand-only-for-last-commands nil)
+    (yas-global-mode 1)
+    (bind-key "\t" 'hippie-expand yas-minor-mode-map)
+    (add-to-list 'yas-prompt-functions 'shk-yas/helm-prompt)))
+
+(dolist (command '(yank yank-pop))
+  (eval
+   `(defadvice ,command (after indent-region activate)
+      (and (not current-prefix-arg)
+	   (member major-mode
+		   '(emacs-lisp-mode
+		     lisp-mode
+		     clojure-mode
+		     scheme-mode
+		     haskell-mode
+		     ruby-mode
+		     rspec-mode
+		     python-mode
+		     c-mode
+		     c++-mode
+		     objc-mode
+		     latex-mode
+		     js-mode
+		     plain-tex-mode))
+	   (let ((mark-even-if-inactive transient-mark-mode))
+	     (indent-region (region-beginning) (region-end) nil))))))
+
+(defun shk-yas/helm-prompt (prompt choices &optional display-fn)
+  "Use helm to select a snippet. Put this into `yas-prompt-functions.'"
+  (interactive)
+  (setq display-fn (or display-fn 'identity))
+  (if (require 'helm-config)
+      (let (tmpsource cands result rmap)
+        (setq cands (mapcar (lambda (x) (funcall display-fn x)) choices))
+        (setq rmap (mapcar (lambda (x) (cons (funcall display-fn x) x)) choices))
+        (setq tmpsource
+              (list
+               (cons 'name prompt)
+               (cons 'candidates cands)
+               '(action . (("Expand" . (lambda (selection) selection))))
+               ))
+        (setq result (helm-other-buffer '(tmpsource) "*helm-select-yasnippet"))
+        (if (null result)
+            (signal 'quit "user quit!")
+          (cdr (assoc result rmap))))
+    nil))
+#+END_SRC
+*** Smart Tab
+#+BEGIN_SRC emacs-lisp
+(use-package smart-tab
+  :config
+  (progn
+    (defun pkg-enable-smart-tab ()
+      (smart-tab-mode))
+    (add-hook 'prog-mode-hook 'pkg-enable-smart-tab)
+    ))
+
+#+END_SRC
+
+*** Helm
+#+BEGIN_SRC emacs-lisp
+(use-package helm-swoop)
+(use-package helm-gtags)
+(use-package helm
+  :diminish helm-mode
+  :init
+  (progn
+    ;; (require 'helm-config)
+    (setq helm-candidate-number-limit 100)
+    ;; From https://gist.github.com/antifuchs/9238468
+    (setq helm-idle-delay 0.0 ; update fast sources immediately (doesn't).
+          helm-input-idle-delay 0.01  ; this actually updates things
+                                        ; reeeelatively quickly.
+          helm-yas-display-key-on-candidate t
+          helm-quick-update t
+          helm-M-x-requires-pattern nil
+          helm-ff-skip-boring-files t)
+    (helm-mode))
+  :config
+  (progn
+    )
+  :bind  (("C-c s" . helm-swoop)
+	  ("C-x C-f" . helm-find-files)
+	  ("C-x b" . helm-buffers-list)
+	  ("M-y" . helm-show-kill-ring)
+	  ("M-x" . helm-M-x)))
+#+END_SRC
+*** Fuzzy Search
+#+BEGIN_SRC emacs-lisp
+(use-package fiplr)
+#+END_SRC
+** Programming
+*** Language Service Protocol
+#+BEGIN_SRC emacs-lisp
+  (use-package lsp-mode
+    :ensure t  
+    :config  
+    (add-hook 'go-mode-hook #'lsp)
+    (add-hook 'python-mode-hook #'lsp)
+    (add-hook 'c++-mode-hook #'lsp)
+    (add-hook 'c-mode-hook #'lsp)
+    (add-hook 'rust-mode-hook #'lsp)
+
+    (lsp-register-client
+     (make-lsp-client :new-connection (lsp-stdio-connection "pyls")
+		      :major-modes '(python-mode)
+		      :server-id 'pyls))
+    (setq company-minimum-prefix-length 1
+	  company-idle-delay 0.500) ;; default is 0.2
+
+    :commands lsp)
+
+  (use-package company-lsp
+    :ensure t
+    :config
+    (push 'company-lsp company-backends))
+
+  (use-package lsp-ui
+    :ensure t
+    :custom-face
+    ;; (lsp-ui-doc-background ((t (:background ni))))
+    :init (setq lsp-ui-doc-enable t
+		lsp-ui-doc-include-signature t
+		lsp-ui-doc-position 'at-point
+		lsp-ui-doc-border (face-foreground 'default)
+
+		;; lsp-enable-snippet nil
+		lsp-ui-sideline-enable nil
+		lsp-ui-peek-enable nil)
+    :bind (:map lsp-ui-mode-map
+		([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
+		([remap xref-find-references] . lsp-ui-peek-find-references)
+		("C-c u" . lsp-ui-imenu))
+    :config
+    (setq lsp-ui-sideline-ignore-duplicate t)
+    (add-hook 'lsp-mode-hook 'lsp-ui-mode))
+
+  (setq lsp-prefer-capf t)
+#+END_SRC
+*** Golang
+#+BEGIN_SRC emacs-lisp
+  (use-package go-mode
+    :config
+    (progn
+      (setq gofmt-command "goimports")
+      (add-hook 'before-save-hook 'gofmt-before-save)
+      ))
+
+  (use-package company-go
+    :init
+    (progn
+      (setq company-go-show-annotation t)
+      (setq company-tooltip-limit 20)                      ; bigger popup window
+      (add-hook 'go-mode-hook 
+		(lambda ()
+		  (set (make-local-variable 'company-backends) '(company-go))
+		  (company-mode)))
+      )
+    )
+
+  (use-package go-eldoc
+    :config
+    (progn
+      (add-hook 'go-mode-hook 'go-eldoc-setup)
+      ))
+
+  (use-package go-guru
+    :defer t
+    :hook (go-mode . go-guru-hl-identifier-mode))
+#+END_SRC
+*** Python
+#+BEGIN_SRC emacs-lisp
+(use-package python
+  :mode ("\\.py" . python-mode)
+  :ensure t)
+
+(use-package pyenv-mode
+  :init
+  (add-to-list 'exec-path "~/.pyenv/shims")
+  (setenv "WORKON_HOME" "~/.pyenv/versions/")
+  :config
+  (pyenv-mode))
+#+END_SRC
+** OrgMode
+#+BEGIN_SRC emacs-lisp
+(setq org-todo-keywords 
+      '((sequence "TODO(t)" "INPROGRESS(i)" "WAITING(w)" "REVIEW(r)" "|" "DONE(d)" "CANCELED(c)")))
+
+(setq org-todo-keyword-faces
+      '(("TODO" . org-warning)
+	("INPROGRESS" . "yellow")
+	("WAITING" . "purple")
+	("REVIEW" . "orange")
+	("DONE" . "green")
+	("CANCELED" .  "red")))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-bullets
+  :config
+  (progn
+    (setq org-bullets-bullet-list '("☯" "✿" "✚" "◉" "❀"))
+    (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
+    ))
+
+(use-package org-alert
+  :defer t
+  :config
+  (progn
+    (setq alert-default-style 'libnotify)
+    ))
+#+END_SRC
+** Keybind
+#+BEGIN_SRC emacs-lisp
+(global-set-key (kbd "C-\\") 'comment-line)
+
+(global-set-key (kbd "<f3>") 'helm-recentf)
+(global-set-key (kbd "<f4>") 'fiplr-find-file)
+(global-set-key (kbd "<f5>") 'grep-find)
+(global-set-key (kbd "<f10>") 'helm-M-x)
+
+(global-set-key (kbd "M-0") 'next-multiframe-window)
+(global-set-key (kbd "M-9") 'previous-multiframe-window)
+#+END_SRC
