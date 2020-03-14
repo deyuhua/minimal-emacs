@@ -1,26 +1,35 @@
-* Minimal Emacs Config
+* Minimal Emacs
+
+1. 在Orgmode中配置Emacs，在init.el中加载本配置；
+2. Emacs更新到28+，开启native json优化性能；
+3. 精简配置，去除低频软件包，增加流畅度；
+4. 代码提示补全等功能全面切换到Lsp；
+
 ** Environment
-*** Package Install Tool
+
+*** Packages
 #+BEGIN_SRC emacs-lisp
-(require 'package)
-(setq package-enable-at-startup nil)
+  (require 'package)
+  (setq package-enable-at-startup nil)
 
-(unless (assoc-default "melpa" package-archives)
-  (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t))
-(unless (assoc-default "org" package-archives)
-  (add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/") t))
-(unless (assoc-default "marmalade" package-archives)
-  (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
-(package-initialize)
+  ;; Add useful package repo
+  (unless (assoc-default "melpa" package-archives)
+    (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t))
+  (unless (assoc-default "org" package-archives)
+    (add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/") t))
+  (unless (assoc-default "marmalade" package-archives)
+    (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
+  (package-initialize)
 
-(unless (package-installed-p 'use-package)
-  (package-refresh-contents)
-  (package-install 'use-package))
+  ;; Install use-package if not available
+  (unless (package-installed-p 'use-package)
+    (package-refresh-contents)
+    (package-install 'use-package))
 
-(eval-when-compile
-  (require 'use-package))
-(setq use-package-verbose t)
-(setq use-package-always-ensure t)
+  (eval-when-compile
+    (require 'use-package))
+  (setq use-package-verbose t)
+  (setq use-package-always-ensure t)
 #+END_SRC
 
 *** Encoding and Envs
@@ -60,6 +69,7 @@
       indent-tabs-mode nil
       make-backup-files nil
       auto-save-default nil)
+(setq create-lockfiles nil)
 #+END_SRC
 
 *** History
@@ -77,30 +87,36 @@
 
 *** MacOS System
 #+BEGIN_SRC emacs-lisp
-(cond ((string-equal system-type "darwin")
-       (progn
-	 ;; modify option and command key
-	 (setq mac-command-modifier 'control)
-	 (setq mac-option-modifier 'meta)
+  (cond ((string-equal system-type "darwin")
+	 (progn
+	   ;; modify option and command key
+	   (setq mac-command-modifier 'control)
+	   (setq mac-option-modifier 'meta)
 
-	 ;; batter copy and paste support for mac os x
-	 (defun copy-from-osx ()
-	   (shell-command-to-string "pbpaste"))
-	 (defun paste-to-osx (text &optional push)
-	   (let ((process-connection-type nil))
-	     (let ((proc (start-process "pbcopy" "*Messages*" "pbcopy")))
-	       (process-send-string proc text)
-	       (process-send-eof proc))))
-	 (setq interprogram-cut-function 'paste-to-osx)
-	 (setq interprogram-paste-function 'copy-from-osx)
+	   ;; batter copy and paste support for mac os x
+	   (defun copy-from-osx ()
+	     (shell-command-to-string "pbpaste"))
+	   (defun paste-to-osx (text &optional push)
+	     (let ((process-connection-type nil))
+	       (let ((proc (start-process "pbcopy" "*Messages*" "pbcopy")))
+		 (process-send-string proc text)
+		 (process-send-eof proc))))
+	   (setq interprogram-cut-function 'paste-to-osx)
+	   (setq interprogram-paste-function 'copy-from-osx)
 
-	 (message "Wellcome To Mac OS X, Have A Nice Day!!!"))))
+	   (use-package exec-path-from-shell)
+	   (when (memq window-system '(mac ns x))
+	     (exec-path-from-shell-initialize))
+
+	   (message "Wellcome To Mac OS X, Have A Nice Day!!!"))))
 #+END_SRC
 
 *** Performance
 #+BEGIN_SRC emacs-lisp
-(setq gc-cons-threshold 1000000000)
-(setq read-process-output-max (* 1024 1024 1024)) ;; 1gb
+;; 增大垃圾回收的阈值，提高整体性能（内存换效率）
+(setq gc-cons-threshold (* 8192 8192))
+;; 增大同LSP服务器交互时的读取文件的大小
+(setq read-process-output-max (* 1024 1024 128)) ;; 128MB
 #+END_SRC
 ** Appearance
 *** Titlebar
@@ -121,6 +137,9 @@
 (use-package doom-modeline
   :ensure t
   :hook (after-init . doom-modeline-mode))
+
+(set-face-foreground 'mode-line "white")
+(set-face-background 'mode-line "purple")
 #+END_SRC
 *** Rainbow
 #+BEGIN_SRC emacs-lisp
@@ -140,7 +159,14 @@
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-
+  (if (display-graphic-p)
+      (progn
+	(set-face-attribute 'default nil
+			    :family "LigaSauceCodeProMedium Nerd Font"
+			    :height 140
+			    :weight 'Medium)
+	(load-theme 'doom-dracula)
+	))
 #+END_SRC
 
 ** Tools
@@ -154,6 +180,16 @@
     (setq undo-tree-visualizer-timestamps t)
     (setq undo-tree-visualizer-diff t)
     ))
+#+END_SRC
+
+*** AutoCompany
+    
+#+BEGIN_SRC emacs-lisp
+  (use-package company
+    :ensure t
+    :config
+    (progn
+      (add-hook 'after-init-hook 'global-company-mode)))
 #+END_SRC
 
 *** Display Keybind
@@ -310,13 +346,19 @@
 	  ("M-y" . helm-show-kill-ring)
 	  ("M-x" . helm-M-x)))
 #+END_SRC
-*** Fuzzy Search
+*** Fuzzy Searcha
 #+BEGIN_SRC emacs-lisp
 (use-package fiplr)
 #+END_SRC
 ** Programming
-*** Language Service Protocol
+*** Lsp Mode
 #+BEGIN_SRC emacs-lisp
+  (use-package ccls
+    :ensure t
+    :config
+    (setq ccls-executable "/usr/local/bin/ccls")
+    )
+
   (use-package lsp-mode
     :ensure t  
     :config  
@@ -325,6 +367,14 @@
     (add-hook 'c++-mode-hook #'lsp)
     (add-hook 'c-mode-hook #'lsp)
     (add-hook 'rust-mode-hook #'lsp)
+    (add-hook 'html-mode-hook #'lsp)
+    (add-hook 'js-mode-hook #'lsp)
+    (add-hook 'typescript-mode-hook #'lsp)
+    (add-hook 'json-mode-hook #'lsp)
+    (add-hook 'yaml-mode-hook #'lsp)
+    (add-hook 'dockerfile-mode-hook #'lsp)
+    (add-hook 'shell-mode-hook #'lsp)
+    (add-hook 'css-mode-hook #'lsp)
 
     (lsp-register-client
      (make-lsp-client :new-connection (lsp-stdio-connection "pyls")
@@ -332,7 +382,7 @@
 		      :server-id 'pyls))
     (setq company-minimum-prefix-length 1
 	  company-idle-delay 0.500) ;; default is 0.2
-
+    (require 'lsp-clients) 
     :commands lsp)
 
   (use-package company-lsp
@@ -340,25 +390,25 @@
     :config
     (push 'company-lsp company-backends))
 
-  (use-package lsp-ui
-    :ensure t
-    :custom-face
-    ;; (lsp-ui-doc-background ((t (:background ni))))
-    :init (setq lsp-ui-doc-enable t
-		lsp-ui-doc-include-signature t
-		lsp-ui-doc-position 'at-point
-		lsp-ui-doc-border (face-foreground 'default)
+  ;; (use-package lsp-ui
+  ;;   :ensure t
+  ;;   :custom-face
+  ;;   ;; (lsp-ui-doc-background ((t (:background ni))))
+  ;;   :init (setq lsp-ui-doc-enable t
+  ;; 	      lsp-ui-doc-include-signature t
+  ;; 	      lsp-ui-doc-position 'at-point
+  ;; 	      lsp-ui-doc-border (face-foreground 'default)
 
-		;; lsp-enable-snippet nil
-		lsp-ui-sideline-enable nil
-		lsp-ui-peek-enable nil)
-    :bind (:map lsp-ui-mode-map
-		([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
-		([remap xref-find-references] . lsp-ui-peek-find-references)
-		("C-c u" . lsp-ui-imenu))
-    :config
-    (setq lsp-ui-sideline-ignore-duplicate t)
-    (add-hook 'lsp-mode-hook 'lsp-ui-mode))
+  ;; 	      ;; lsp-enable-snippet nil
+  ;; 	      lsp-ui-sideline-enable nil
+  ;; 	      lsp-ui-peek-enable nil)
+  ;;   :bind (:map lsp-ui-mode-map
+  ;; 	      ([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
+  ;; 	      ([remap xref-find-references] . lsp-ui-peek-find-references)
+  ;; 	      ("C-c u" . lsp-ui-imenu))
+  ;;   :config
+  ;;   (setq lsp-ui-sideline-ignore-duplicate t)
+  ;;   (add-hook 'lsp-mode-hook 'lsp-ui-mode))
 
   (setq lsp-prefer-capf t)
 #+END_SRC
@@ -395,17 +445,95 @@
 #+END_SRC
 *** Python
 #+BEGIN_SRC emacs-lisp
-(use-package python
-  :mode ("\\.py" . python-mode)
-  :ensure t)
+  (use-package python
+    :mode ("\\.py" . python-mode)
+    :ensure t)
 
-(use-package pyenv-mode
-  :init
-  (add-to-list 'exec-path "~/.pyenv/shims")
-  (setenv "WORKON_HOME" "~/.pyenv/versions/")
-  :config
-  (pyenv-mode))
+  (use-package pyvenv)
+
+  (use-package python-black
+    :demand t
+    :after python
+    :config
+    (python-black-on-save-mode))
+
+  (use-package pyenv-mode
+    :init
+    (add-to-list 'exec-path "~/.pyenv/shims")
+    (setenv "WORKON_HOME" "~/.pyenv/versions/")
+    :config
+    (pyenv-mode))
 #+END_SRC
+*** Webdev
+#+BEGIN_SRC emacs-lisp
+  ;; web tools
+  (use-package emmet-mode)
+  ;; (use-package web-mode
+  ;;   :config
+  ;;   (progn
+  ;;     (defun @-web-mode-hook ()
+  ;;       "Hooks for Web mode."
+  ;;       (setq web-mode-markup-indent-offset 4)
+  ;;       (setq web-mode-code-indent-offset 4)
+  ;;       (setq web-mode-css-indent-offset 4))
+
+  ;;     (add-to-list 'auto-mode-alist '("\\.ts\\'" . web-mode))
+  ;;     (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+  ;;     (add-to-list 'auto-mode-alist '("\\.css?\\'" . web-mode))
+  ;;     (add-to-list 'auto-mode-alist '("\\.js\\'" . web-mode))
+
+  ;;     (add-hook 'web-mode-hook  '@-web-mode-hook)    
+  ;;     (setq tab-width 4)
+
+  ;;     (add-hook 'web-mode-hook  'emmet-mode)))
+  (use-package web-beautify)
+
+  ;; typescirpt tide
+  (use-package typescript-mode)
+  (use-package tide)
+
+  (defun setup-tide-mode ()
+    (interactive)
+    (tide-setup)
+    (flycheck-mode +1)
+    (setq flycheck-check-syntax-automatically '(save mode-enabled))
+    (eldoc-mode +1)
+    (tide-hl-identifier-mode +1)
+    ;; company is an optional dependency. You have to
+    ;; install it separately via package-install
+    ;; `M-x package-install [ret] company`
+    (company-mode +1))
+
+  ;; aligns annotation to the right hand side
+  (setq company-tooltip-align-annotations t)
+  (add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode))
+
+  ;; formats the buffer before saving
+  (add-hook 'before-save-hook 'tide-format-before-save)
+  (add-hook 'typescript-mode-hook #'setup-tide-mode)
+  (add-hook 'web-mode-hook
+	    (lambda ()
+	      (when (string-equal "tsx" (file-name-extension buffer-file-name))
+		(setup-tide-mode))))
+#+END_SRC
+*** Json
+#+BEGIN_SRC emacs-lisp
+  (use-package json-mode)
+#+END_SRC
+*** Yaml
+#+BEGIN_SRC emacs-lisp
+  (use-package yaml-mode)
+#+END_SRC
+*** Dockfile
+#+BEGIN_SRC emacs-lisp
+  (use-package dockerfile-mode)
+#+END_SRC
+*** C/C++
+#+BEGIN_SRC emacs-lisp
+  (use-package ycmd
+    :hook (c++-mode . ycmd-mode))
+#+END_SRC
+
 ** OrgMode
 #+BEGIN_SRC emacs-lisp
 (setq org-todo-keywords 
@@ -434,6 +562,39 @@
   (progn
     (setq alert-default-style 'libnotify)
     ))
+#+END_SRC
+** Functions
+#+BEGIN_SRC emacs-lisp
+(use-package ido-completing-read+)
+(defun @-insert-src-block (src-code-type)
+  "Insert a `SRC-CODE-TYPE' type source code block in org-mode."
+  (interactive
+   (let ((src-code-types
+          '("emacs-lisp" "python" "C" "sh" "java" "js" "clojure" "C++" "css"
+            "calc" "asymptote" "dot" "gnuplot" "ledger" "lilypond" "mscgen"
+            "octave" "oz" "plantuml" "R" "sass" "screen" "sql" "awk" "ditaa"
+            "haskell" "latex" "lisp" "matlab" "ocaml" "org" "perl" "ruby"
+            "scheme" "sqlite" "html")))
+     (list (ido-completing-read+ "Source code type: " src-code-types))))
+  (progn
+    (newline-and-indent)
+    (insert (format "\n#+BEGIN_SRC %s\n" src-code-type))
+    (newline-and-indent)
+    (insert "#+END_SRC\n")
+    (previous-line 2)
+    (org-edit-src-code)))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(defun @-close-all-buffers ()
+  (interactive)
+  (mapc 'kill-buffer (buffer-list)))
+
+(defun @-minify-buffer-contents()
+  (interactive)
+  (mark-whole-buffer)
+  (goto-char (point-min))
+  (while (search-forward-regexp "[\s\n]*" nil t) (replace-match "" nil t)))
 #+END_SRC
 ** Keybind
 #+BEGIN_SRC emacs-lisp
