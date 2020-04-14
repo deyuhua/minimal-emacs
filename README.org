@@ -158,9 +158,15 @@
      ;; Corrects (and improves) org-mode's native fontification.
      (doom-themes-org-config))
 
-  (use-package darkokai-theme
-    :ensure t
-    :config (load-theme 'darkokai t))
+  (if (string-equal system-type "darwin")
+      (use-package darkokai-theme
+	:ensure t
+	:config (load-theme 'darkokai t))
+    (use-package doom-themes
+      :ensure t
+      :config (load-theme 'doom-nord))
+    )
+
 
   ;; nerd-icons
   ;;(add-to-list 'load-path (expand-file-name "~/.emacs.d/site-lisp/nerd-icons"))
