@@ -163,8 +163,8 @@
     :config (load-theme 'darkokai t))
 
   ;; nerd-icons
-  (add-to-list 'load-path (expand-file-name "~/.emacs.d/site-lisp/nerd-icons"))
-  (require 'nerd-icons)
+  ;;(add-to-list 'load-path (expand-file-name "~/.emacs.d/site-lisp/nerd-icons"))
+  ;;(require 'nerd-icons)
 
   ;; modeline
    (use-package doom-modeline
