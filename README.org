@@ -1,12 +1,10 @@
+#+TITLE: 极简Emacs开发环境配置
+#+OPTIONS: H:3 toc:t num:nil
+#+KEYWORDS: emacs, 编辑器, org mode, 配置, emacs lisp, elisp
+#+DESCRIPTION: 从零开始配置emacs编辑器，学习emacs lisp语言，打造强大的编辑器
+
 * Minimal Emacs
-
-1. 在Orgmode中配置Emacs，在init.el中加载本配置；
-2. Emacs更新到28+，开启native json优化性能；
-3. 精简配置，去除低频软件包，增加流畅度；
-4. 代码提示补全等功能全面切换到Lsp；
-
 ** Environment
-
 *** Packages
 #+BEGIN_SRC emacs-lisp
   (require 'package)
@@ -14,11 +12,13 @@
 
   ;; Add useful package repo
   (unless (assoc-default "melpa" package-archives)
-    (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t))
+    (add-to-list 'package-archives '("melpa" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/melpa/") t))
   (unless (assoc-default "org" package-archives)
-    (add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/") t))
+    (add-to-list 'package-archives '("org" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/org/") t))
   (unless (assoc-default "marmalade" package-archives)
-    (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
+    (add-to-list 'package-archives '("marmalade" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/marmalade/")))
+  (unless (assoc-default "gnu" package-archives)
+    (add-to-list 'package-archives '("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")))
   (package-initialize)
 
   ;; Install use-package if not available
@@ -30,8 +30,8 @@
     (require 'use-package))
   (setq use-package-verbose t)
   (setq use-package-always-ensure t)
+  (setq warning-minimum-level :emergency)
 #+END_SRC
-
 *** Encoding and Envs
 #+BEGIN_SRC emacs-lisp
 (prefer-coding-system 'utf-8)
@@ -113,49 +113,81 @@
 
 *** Performance
 #+BEGIN_SRC emacs-lisp
-;; 增大垃圾回收的阈值，提高整体性能（内存换效率）
-(setq gc-cons-threshold (* 8192 8192))
-;; 增大同LSP服务器交互时的读取文件的大小
-(setq read-process-output-max (* 1024 1024 128)) ;; 128MB
+  (if (not (display-graphic-p))
+      (progn
+	;; 增大垃圾回收的阈值，提高整体性能（内存换效率）
+	(setq gc-cons-threshold (* 8192 8192))
+	;; 增大同LSP服务器交互时的读取文件的大小
+	(setq read-process-output-max (* 1024 1024 128)) ;; 128MB
+	))
 #+END_SRC
 ** Appearance
 *** Titlebar
 #+BEGIN_SRC emacs-lisp
-(add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
-(add-to-list 'default-frame-alist '(ns-appearance . dark))
+  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+  (add-to-list 'default-frame-alist '(ns-appearance . dark))
 
-(set-face-background 'vertical-border (face-background 'default))
-(set-face-foreground 'vertical-border "grey")
+  (let ((display-table (or standard-display-table (make-display-table))))
+    (set-display-table-slot display-table 'vertical-border (make-glyph-code ?│)) ; or ┃ │
+    (setq standard-display-table display-table))
+  (set-face-background 'vertical-border (face-background 'default))
+  (set-face-foreground 'vertical-border "grey")
 #+END_SRC
 *** Doom Theme
 #+BEGIN_SRC emacs-lisp
-(setq custom-safe-themes t)
+   (setq custom-safe-themes t)
 
-(use-package doom-themes)
-(load-theme 'doom-molokai)
+  ;; doom theme enable
+   (use-package doom-themes
+     :config
+     ;; Global settings (defaults)
+     (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+	   doom-themes-enable-italic t) ; if nil, italics is universally disabled
+     ;; Enable flashing mode-line on errors
+     (doom-themes-visual-bell-config)
 
-(use-package doom-modeline
-  :ensure t
-  :hook (after-init . doom-modeline-mode))
+     (if (display-graphic-p)
+	 (progn
+	   ;; Enable custom neotree theme (all-the-icons must be installed!)
+	   (doom-themes-neotree-config)
+	   ;; or for treemacs users
+	   (setq doom-themes-treemacs-theme "doom-colors") ; use the colorful treemacs theme
+	   (doom-themes-treemacs-config)
+	   ))
 
-(set-face-foreground 'mode-line "white")
-(set-face-background 'mode-line "purple")
+     ;; Corrects (and improves) org-mode's native fontification.
+     (doom-themes-org-config))
+
+  (use-package darkokai-theme
+    :ensure t
+    :config (load-theme 'darkokai t))
+
+  ;; nerd-icons
+  (add-to-list 'load-path (expand-file-name "~/.emacs.d/site-lisp/nerd-icons"))
+  (require 'nerd-icons)
+
+  ;; modeline
+   (use-package doom-modeline
+     :ensure t
+     :hook (after-init . doom-modeline-mode))
+
+   (set-face-background 'mode-line nil)
 #+END_SRC
 *** Rainbow
 #+BEGIN_SRC emacs-lisp
 (use-package rainbow-mode
   :config
   (progn
-    (defun pkg-enable-rainbow ()
+    (defun @-enable-rainbow ()
       (rainbow-mode t))
-    (add-hook 'prog-mode-hook 'pkg-enable-rainbow)
+    (add-hook 'prog-mode-hook '@-enable-rainbow)
 ))
 (use-package rainbow-delimiters
   :config
   (progn
-    (defun pkg-enable-rainbow-delimiters ()
+    (defun @-enable-rainbow-delimiters ()
       (rainbow-delimiters-mode t))
-    (add-hook 'prog-mode-hook 'pkg-enable-rainbow-delimiters)))
+    (add-hook 'prog-mode-hook '@-enable-rainbow-delimiters)))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -163,9 +195,41 @@
       (progn
 	(set-face-attribute 'default nil
 			    :family "LigaSauceCodeProMedium Nerd Font"
-			    :height 140
-			    :weight 'Medium)
-	(load-theme 'doom-dracula)
+			    :height 130
+			    :weight 'Normal)
+	(dolist (charset '(kana han symbol cjk-misc bopomofo))
+	  (set-fontset-font (frame-parameter nil 'font)
+			    charset (font-spec :family "Microsoft Yahei"
+					       :size 13)))
+	(let ((alist '((33 . ".\\(?:\\(?:==\\|!!\\)\\|[!=]\\)")
+		       (35 . ".\\(?:###\\|##\\|_(\\|[#(?[_{]\\)")
+		       (36 . ".\\(?:>\\)")
+		       (37 . ".\\(?:\\(?:%%\\)\\|%\\)")
+		       (38 . ".\\(?:\\(?:&&\\)\\|&\\)")
+		       (42 . ".\\(?:\\(?:\\*\\*/\\)\\|\\(?:\\*[*/]\\)\\|[*/>]\\)")
+		       (43 . ".\\(?:\\(?:\\+\\+\\)\\|[+>]\\)")
+		       (45 . ".\\(?:\\(?:-[>-]\\|<<\\|>>\\)\\|[<>}~-]\\)")
+		       (46 . ".\\(?:\\(?:\\.[.<]\\)\\|[.=-]\\)")
+		       (47 . ".\\(?:\\(?:\\*\\*\\|//\\|==\\)\\|[*/=>]\\)")
+		       (48 . ".\\(?:x[a-zA-Z]\\)")
+		       (58 . ".\\(?:::\\|[:=]\\)")
+		       (59 . ".\\(?:;;\\|;\\)")
+		       (60 . ".\\(?:\\(?:!--\\)\\|\\(?:~~\\|->\\|\\$>\\|\\*>\\|\\+>\\|--\\|<[<=-]\\|=[<=>]\\||>\\)\\|[*$+~/<=>|-]\\)")
+		       (61 . ".\\(?:\\(?:/=\\|:=\\|<<\\|=[=>]\\|>>\\)\\|[<=>~]\\)")
+		       (62 . ".\\(?:\\(?:=>\\|>[=>-]\\)\\|[=>-]\\)")
+		       (63 . ".\\(?:\\(\\?\\?\\)\\|[:=?]\\)")
+		       (91 . ".\\(?:]\\)")
+		       (92 . ".\\(?:\\(?:\\\\\\\\\\)\\|\\\\\\)")
+		       (94 . ".\\(?:=\\)")
+		       (119 . ".\\(?:ww\\)")
+		       (123 . ".\\(?:-\\)")
+		       (124 . ".\\(?:\\(?:|[=|]\\)\\|[=>|]\\)")
+		       (126 . ".\\(?:~>\\|~~\\|[>=@~-]\\)")
+		       )
+		     ))
+	  (dolist (char-regexp alist)
+	    (set-char-table-range composition-function-table (car char-regexp)
+				  `([,(cdr char-regexp) 0 font-shape-gstring]))))
 	))
 #+END_SRC
 
@@ -214,12 +278,13 @@
 
 *** Line Number
 #+BEGIN_SRC emacs-lisp
-(use-package linum
-  :init
-  (progn
-    (global-linum-mode t)
-    (setq linum-format "%4d  ")
-    ))
+  (use-package linum
+    :init
+    (progn
+      (global-linum-mode t)
+      (setq linum-format "%4d  ")
+	(set-face-background 'linum nil)
+      ))
 #+END_SRC
 *** Auto Pair Bracket
 #+BEGIN_SRC emacs-lisp
@@ -228,15 +293,17 @@
 #+END_SRC
 *** Neotree Sidebar
 #+BEGIN_SRC emacs-lisp
-(use-package neotree
-  :config
-  (progn
-    (setq neo-smart-open t)
-    (setq neo-theme (if (display-graphic-p) 'icons 'nerd))
-    (setq neo-window-fixed-size nil)
-    ;; (setq-default neo-show-hidden-files nil)
-    (global-set-key [f2] 'neotree-toggle)
-    (global-set-key [f8] 'neotree-dir)))
+  (use-package neotree
+    :custom
+    (neo-theme 'nerd2)
+    :config
+    (progn
+      (setq neo-smart-open t)
+      (setq neo-theme (if (display-graphic-p) 'icons 'nerd))
+      (setq neo-window-fixed-size nil)
+      ;; (setq-default neo-show-hidden-files nil)
+      (global-set-key [f2] 'neotree-toggle)
+      (global-set-key [f8] 'neotree-dir)))
 #+END_SRC
 *** Git Tool
 #+BEGIN_SRC emacs-lisp
@@ -311,9 +378,9 @@
 (use-package smart-tab
   :config
   (progn
-    (defun pkg-enable-smart-tab ()
+    (defun @-enable-smart-tab ()
       (smart-tab-mode))
-    (add-hook 'prog-mode-hook 'pkg-enable-smart-tab)
+    (add-hook 'prog-mode-hook '@-enable-smart-tab)
     ))
 
 #+END_SRC
@@ -350,17 +417,144 @@
 #+BEGIN_SRC emacs-lisp
 (use-package fiplr)
 #+END_SRC
+*** Smart Move
+#+BEGIN_SRC emacs-lisp
+  (use-package mwim
+    :bind
+    ("C-a" . mwim-beginning-of-code-or-line)
+    ("C-e" . mwim-end-of-code-or-line))
+#+END_SRC
+
+*** All The Icons
+    
+#+BEGIN_SRC emacs-lisp
+  (use-package all-the-icons
+    :after memoize
+    :load-path "site-lisp/all-the-icons")
+#+END_SRC
+
+*** Treemacs
+
+#+BEGIN_SRC emacs-lisp
+  (use-package treemacs
+    :ensure t
+    :defer t
+    :init
+    (with-eval-after-load 'winum
+      (define-key winum-keymap (kbd "M-0") #'treemacs-select-window))
+    :config
+    (progn
+      (setq treemacs-collapse-dirs                 (if treemacs-python-executable 3 0)
+	    treemacs-deferred-git-apply-delay      0.5
+	    treemacs-directory-name-transformer    #'identity
+	    treemacs-display-in-side-window        t
+	    treemacs-eldoc-display                 t
+	    treemacs-file-event-delay              5000
+	    treemacs-file-extension-regex          treemacs-last-period-regex-value
+	    treemacs-file-follow-delay             0.2
+	    treemacs-file-name-transformer         #'identity
+	    treemacs-follow-after-init             t
+	    treemacs-git-command-pipe              ""
+	    treemacs-goto-tag-strategy             'refetch-index
+	    treemacs-indentation                   2
+	    treemacs-indentation-string            " "
+	    treemacs-is-never-other-window         nil
+	    treemacs-max-git-entries               5000
+	    treemacs-missing-project-action        'ask
+	    treemacs-no-png-images                 nil
+	    treemacs-no-delete-other-windows       t
+	    treemacs-project-follow-cleanup        nil
+	    treemacs-persist-file                  (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
+	    treemacs-position                      'left
+	    treemacs-recenter-distance             0.1
+	    treemacs-recenter-after-file-follow    nil
+	    treemacs-recenter-after-tag-follow     nil
+	    treemacs-recenter-after-project-jump   'always
+	    treemacs-recenter-after-project-expand 'on-distance
+	    treemacs-show-cursor                   nil
+	    treemacs-show-hidden-files             t
+	    treemacs-silent-filewatch              nil
+	    treemacs-silent-refresh                nil
+	    treemacs-sorting                       'alphabetic-asc
+	    treemacs-space-between-root-nodes      t
+	    treemacs-tag-follow-cleanup            t
+	    treemacs-tag-follow-delay              1.5
+	    treemacs-user-mode-line-format         nil
+	    treemacs-width                         35)
+
+      ;; The default width and height of the icons is 22 pixels. If you are
+      ;; using a Hi-DPI display, uncomment this to double the icon size.
+      ;;(treemacs-resize-icons 44)
+
+      (treemacs-follow-mode t)
+      (treemacs-filewatch-mode t)
+      (treemacs-fringe-indicator-mode t)
+      (pcase (cons (not (null (executable-find "git")))
+		   (not (null treemacs-python-executable)))
+	(`(t . t)
+	 (treemacs-git-mode 'deferred))
+	(`(t . _)
+	 (treemacs-git-mode 'simple))))
+    :bind
+    (:map global-map
+	  ("M-0"       . treemacs-select-window)
+	  ("C-x t 1"   . treemacs-delete-other-windows)
+	  ("C-x t t"   . treemacs)
+	  ("C-x t B"   . treemacs-bookmark)
+	  ("C-x t C-t" . treemacs-find-file)
+	  ("C-x t M-t" . treemacs-find-tag)))
+
+  (use-package treemacs-evil
+    :after treemacs evil
+    :ensure t)
+
+  (use-package treemacs-projectile
+    :after treemacs projectile
+    :ensure t)
+
+  (use-package treemacs-icons-dired
+    :after treemacs dired
+    :ensure t
+    :config (treemacs-icons-dired-mode))
+
+  (use-package treemacs-magit
+    :after treemacs magit
+    :ensure t)
+
+  (use-package treemacs-persp
+    :after treemacs persp-mode
+    :ensure t
+    :config (treemacs-set-scope-type 'Perspectives))
+
+  (use-package lsp-treemacs
+    :commands lsp-treemacs-errors-list
+    :config
+    (lsp-metals-treeview-enable t)
+    (setq lsp-metals-treeview-show-when-views-received t))
+#+END_SRC
+
 ** Programming
 *** Lsp Mode
 #+BEGIN_SRC emacs-lisp
   (use-package ccls
     :ensure t
     :config
-    (setq ccls-executable "/usr/local/bin/ccls")
+    (setq ccls-executable (expand-file-name "~/.emacs.d/ccls"))
     )
 
+  ;; (use-package eglot
+    ;; :config
+    ;; (add-hook 'prog-mode-hook 'eglot-ensure))
+
   (use-package lsp-mode
-    :ensure t  
+    :ensure t
+    :custom
+    (lsp-enable-snippet t)
+    (lsp-keep-workspace-alive t)
+    (lsp-enable-xref t)
+    (lsp-enable-imenu t)
+    (lsp-enable-completion-at-point nil)
+
     :config  
     (add-hook 'go-mode-hook #'lsp)
     (add-hook 'python-mode-hook #'lsp)
@@ -390,25 +584,34 @@
     :config
     (push 'company-lsp company-backends))
 
-  ;; (use-package lsp-ui
-  ;;   :ensure t
-  ;;   :custom-face
-  ;;   ;; (lsp-ui-doc-background ((t (:background ni))))
-  ;;   :init (setq lsp-ui-doc-enable t
-  ;; 	      lsp-ui-doc-include-signature t
-  ;; 	      lsp-ui-doc-position 'at-point
-  ;; 	      lsp-ui-doc-border (face-foreground 'default)
+  (use-package lsp-ui
+    :ensure t
+    :custom-face
+    (lsp-ui-doc-background ((t (:background ni))))
+    :init (setq lsp-ui-doc-enable t
+		lsp-ui-doc-include-signature t	    	   
 
-  ;; 	      ;; lsp-enable-snippet nil
-  ;; 	      lsp-ui-sideline-enable nil
-  ;; 	      lsp-ui-peek-enable nil)
-  ;;   :bind (:map lsp-ui-mode-map
-  ;; 	      ([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
-  ;; 	      ([remap xref-find-references] . lsp-ui-peek-find-references)
-  ;; 	      ("C-c u" . lsp-ui-imenu))
-  ;;   :config
-  ;;   (setq lsp-ui-sideline-ignore-duplicate t)
-  ;;   (add-hook 'lsp-mode-hook 'lsp-ui-mode))
+		lsp-enable-snippet nil
+		lsp-ui-sideline-enable nil
+		lsp-ui-peek-enable nil
+
+		lsp-ui-doc-position              'at-point
+		lsp-ui-doc-header                nil
+		lsp-ui-doc-border                "white"
+		lsp-ui-doc-include-signature     t
+		lsp-ui-sideline-update-mode      'point
+		lsp-ui-sideline-delay            1
+		lsp-ui-sideline-ignore-duplicate t
+		lsp-ui-peek-always-show          t
+		lsp-ui-flycheck-enable           nil
+		)
+    :bind (:map lsp-ui-mode-map
+		([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
+		([remap xref-find-references] . lsp-ui-peek-find-references)
+		("C-c u" . lsp-ui-imenu))
+    :config
+    (setq lsp-ui-sideline-ignore-duplicate t)
+    (add-hook 'lsp-mode-hook 'lsp-ui-mode))
 
   (setq lsp-prefer-capf t)
 #+END_SRC
@@ -420,6 +623,19 @@
       (setq gofmt-command "goimports")
       (add-hook 'before-save-hook 'gofmt-before-save)
       ))
+
+  ;; (use-package auto-complete)
+  ;; (use-package go-autocomplete
+  ;;   :ensure t
+  ;;   :config
+  ;;   (require 'auto-complete-config)
+  ;;   (ac-config-default)
+  ;;   )
+
+  (when (memq window-system '(mac ns))
+    (use-package exec-path-from-shell)
+    (exec-path-from-shell-initialize)
+    (exec-path-from-shell-copy-env "GOPATH"))
 
   (use-package company-go
     :init
@@ -442,6 +658,12 @@
   (use-package go-guru
     :defer t
     :hook (go-mode . go-guru-hl-identifier-mode))
+
+  ;; go get -u -v golang.org/x/tools/cmd/...
+  ;; go get -u -v github.com/rogpeppe/godef
+  ;; go get -u -v golang.org/x/tools/cmd/goimports
+  ;; go get -u -v golang.org/x/tools/gopls
+  ;; go get -u -v github.com/mdempsky/gocode
 #+END_SRC
 *** Python
 #+BEGIN_SRC emacs-lisp
@@ -528,10 +750,10 @@
 #+BEGIN_SRC emacs-lisp
   (use-package dockerfile-mode)
 #+END_SRC
-*** C/C++
+
+*** Protobuf
 #+BEGIN_SRC emacs-lisp
-  (use-package ycmd
-    :hook (c++-mode . ycmd-mode))
+  (use-package protobuf-mode)
 #+END_SRC
 
 ** OrgMode
@@ -563,6 +785,125 @@
     (setq alert-default-style 'libnotify)
     ))
 #+END_SRC
+
+*** Org Publish
+    
+#+BEGIN_SRC emacs-lisp
+  (use-package org
+    :ensure org-plus-contrib
+    :defer t)
+
+  (require 'ox-md)
+  (require 'ox-publish)
+
+  ;; setup export theme
+  (defun @-publish-theme (theme fn &rest args)
+    (let ((current-themes custom-enabled-themes))
+      (mapcar #'disable-theme custom-enabled-themes)
+      (load-theme theme t)
+      (let ((result (apply fn args)))
+	(mapcar #'disable-theme custom-enabled-themes)
+	(mapcar (lambda (theme) (load-theme theme t)) current-themes)
+	result)))
+
+  (advice-add #'org-export-to-file :around (apply-partially #'@-publish-theme 'dracula))
+  (advice-add #'org-export-to-buffer :around (apply-partially #'@-publish-theme 'dracula))
+
+  ;; force publish whole site
+  (use-package htmlize)
+  (defun @-force-org-publish ()
+    (interactive)
+    (progn
+      (org-reload)
+      (org-publish-remove-all-timestamps)
+      (org-publish-all t)
+      (load-theme 'doom-molokai)    
+      (set-face-background 'vertical-border (face-background 'default))
+      (set-face-foreground 'vertical-border "grey")
+      ))
+
+  ;; read file content
+  (defun @-load-file-contents (filename)
+    "Return the contents of FILENAME."
+    (with-temp-buffer
+      (insert-file-contents filename)
+      (buffer-string)))
+
+  ;; sitemap function
+  (defun @-org-publish-org-sitemap (title list)
+    "Sitemap generation function."
+    (concat (format "#+TITLE: %s\n" title)
+	    "#+OPTIONS: toc:nil\n"
+	    "#+KEYWORDS:技术博客,技术思考,机器学习,边缘计算,Kubernets,容器技术\n"
+	    "#+DESCRIPTION:前沿技术博客,记录技术生活点滴,Dont't Panic\n\n"
+	    "* Articals\n"
+	    (replace-regexp-in-string "\*" " " (org-list-to-subtree list))
+	    "\n\n"
+	    (@-load-file-contents (expand-file-name "~/.emacs.d/aboutme.org"))
+	    ))
+
+  (defun @-org-publish-org-sitemap-format (entry style project)
+    "Custom sitemap entry formatting: add date"
+    (cond ((not (directory-name-p entry))
+	   (format "- [[file:%s][ %s]]"
+		   entry
+		   (org-publish-find-title entry project)))
+	  ((eq style 'tree)
+	   ;; Return only last subdir.
+	   (concat "+ "
+		   (capitalize (file-name-nondirectory (directory-file-name entry)))
+		   "/"))
+	  (t entry)))
+
+  ;; customize exported html
+  (setq org-html-head (@-load-file-contents (expand-file-name "~/.emacs.d/template.html")))
+  (setq org-html-preamble t)
+  (setq org-html-postamble (@-load-file-contents (expand-file-name "~/.emacs.d/footer.html")))
+  (setq org-publish-project-alist
+	'(("orgfiles"
+	   :base-directory "/Users/deyuhua/Documents/org/notebooks/"
+	   :base-extension "org"
+	   :publishing-directory "/Users/deyuhua/Workspace/Documents/网站生成/notebooks/"
+	   :publishing-function org-html-publish-to-html
+	   :headline-levels 3
+	   :section-numbers nil
+	   :with-toc t
+	   :html-head-include-scripts nil	 
+	   ;; :html-head site-header
+	   ;; :html-preamble t
+	   :recursive t
+	   :with-email "deyuhua@gmail.com"
+	   :with-title t
+	   :html-html5-fancy t
+	   :auto-sitemap t
+	   :sitemap-function @-org-publish-org-sitemap
+	   :sitemap-format-entry @-org-publish-org-sitemap-format
+	   :sitemap-filename "index.org"
+	   :sitemap-title "Don't Panic!"
+	   )
+
+	  ("images"
+	   :recursive t
+	   :base-directory "/Users/deyuhua/Documents/org/notebooks/images/"
+	   :base-extension "jpg\\|gif\\|png\\|jpeg\\|ico"
+	   :publishing-directory "/Users/deyuhua/Workspace/Documents/网站生成/notebooks/images/"
+	   :publishing-function org-publish-attachment)
+
+	  ("style"
+	   :base-directory "/Users/deyuhua/Documents/org/notebooks/style/"
+	   :base-extension "css\\|el\\|js"
+	   :publishing-directory "/Users/deyuhua/Workspace/Documents/网站生成/notebooks/style/"
+	   :publishing-function org-publish-attachment)
+
+	  ("fonts"
+	   :base-directory "/Users/deyuhua/Documents/org/notebooks/fonts/"
+	   :base-extension "eot\\|woff2\\|woff\\|ttf\\|svg"
+	   :publishing-directory "/Users/deyuhua/Workspace/Documents/网站生成/notebooks/fonts/"
+	   :publishing-function org-publish-attachment)	
+
+	  ("website" :components ("orgfiles" "images" "style" "fonts"))))
+#+END_SRC
+
 ** Functions
 #+BEGIN_SRC emacs-lisp
 (use-package ido-completing-read+)
@@ -598,13 +939,19 @@
 #+END_SRC
 ** Keybind
 #+BEGIN_SRC emacs-lisp
-(global-set-key (kbd "C-\\") 'comment-line)
+  (global-set-key (kbd "C-\\") 'comment-line)
+  ;; F1 for tmux
+  ;; F2 neotree toggle
+  (global-set-key (kbd "<f3>") 'helm-recentf)
+  (global-set-key (kbd "<f4>") 'fiplr-find-file)
+  (global-set-key (kbd "<f5>") 'grep-find)
+  (global-set-key (kbd "<f6>") 'goto-line)
 
-(global-set-key (kbd "<f3>") 'helm-recentf)
-(global-set-key (kbd "<f4>") 'fiplr-find-file)
-(global-set-key (kbd "<f5>") 'grep-find)
-(global-set-key (kbd "<f10>") 'helm-M-x)
+  ;; F8 neotree-dir
+  (global-set-key (kbd "<f9>") 'bookmark-jump)
+  (global-set-key (kbd "<f10>") 'helm-M-x)
+  (global-set-key (kbd "<f12>") 'project-find-file)
 
-(global-set-key (kbd "M-0") 'next-multiframe-window)
-(global-set-key (kbd "M-9") 'previous-multiframe-window)
+  (global-set-key (kbd "M-0") 'next-multiframe-window)
+  (global-set-key (kbd "M-9") 'previous-multiframe-window)
 #+END_SRC
