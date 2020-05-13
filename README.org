@@ -31,6 +31,8 @@
   (setq use-package-verbose t)
   (setq use-package-always-ensure t)
   (setq warning-minimum-level :emergency)
+
+  ;; refresh packages metadata
 #+END_SRC
 *** Encoding and Envs
 #+BEGIN_SRC emacs-lisp
@@ -131,7 +133,7 @@
     (set-display-table-slot display-table 'vertical-border (make-glyph-code ?│)) ; or ┃ │
     (setq standard-display-table display-table))
   (set-face-background 'vertical-border (face-background 'default))
-  (set-face-foreground 'vertical-border "grey")
+  (set-face-foreground 'vertical-border "color-237")
 #+END_SRC
 *** Doom Theme
 #+BEGIN_SRC emacs-lisp
@@ -158,14 +160,14 @@
      ;; Corrects (and improves) org-mode's native fontification.
      (doom-themes-org-config))
 
+  (use-package darkokai-theme)
+  (use-package doom-themes)
+
   (if (string-equal system-type "darwin")
-      (use-package darkokai-theme
-	:ensure t
-	:config (load-theme 'darkokai t))
-    (use-package doom-themes
-      :ensure t
-      :config (load-theme 'doom-nord))
-    )
+      (if (display-graphic-p)
+	  (load-theme 'doom-dracula)
+	  (load-theme 'darkokai))
+    (load-theme 'doom-nord))
 
 
   ;; nerd-icons
@@ -201,7 +203,7 @@
       (progn
 	(set-face-attribute 'default nil
 			    :family "LigaSauceCodeProMedium Nerd Font"
-			    :height 130
+			    :height 140
 			    :weight 'Normal)
 	(dolist (charset '(kana han symbol cjk-misc bopomofo))
 	  (set-fontset-font (frame-parameter nil 'font)
@@ -539,6 +541,14 @@
     (setq lsp-metals-treeview-show-when-views-received t))
 #+END_SRC
 
+*** Grun-Mode
+
+#+BEGIN_SRC emacs-lisp
+  (use-package guru-mode
+    :config
+    (guru-global-mode +1))
+#+END_SRC
+
 ** Programming
 *** Lsp Mode
 #+BEGIN_SRC emacs-lisp
@@ -560,21 +570,10 @@
     (lsp-enable-xref t)
     (lsp-enable-imenu t)
     (lsp-enable-completion-at-point nil)
+    (lsp-enable-file-watchers nil)
 
-    :config  
-    (add-hook 'go-mode-hook #'lsp)
-    (add-hook 'python-mode-hook #'lsp)
-    (add-hook 'c++-mode-hook #'lsp)
-    (add-hook 'c-mode-hook #'lsp)
-    (add-hook 'rust-mode-hook #'lsp)
-    (add-hook 'html-mode-hook #'lsp)
-    (add-hook 'js-mode-hook #'lsp)
-    (add-hook 'typescript-mode-hook #'lsp)
-    (add-hook 'json-mode-hook #'lsp)
-    (add-hook 'yaml-mode-hook #'lsp)
-    (add-hook 'dockerfile-mode-hook #'lsp)
-    (add-hook 'shell-mode-hook #'lsp)
-    (add-hook 'css-mode-hook #'lsp)
+    :config
+    ;; (add-hook 'prog-mode-hook #'lsp)
 
     (lsp-register-client
      (make-lsp-client :new-connection (lsp-stdio-connection "pyls")
@@ -618,6 +617,24 @@
     :config
     (setq lsp-ui-sideline-ignore-duplicate t)
     (add-hook 'lsp-mode-hook 'lsp-ui-mode))
+
+  (use-package eglot
+    :ensure t
+    :config
+    (add-hook 'prog-mode-hook 'eglot-ensure))
+
+  (use-package company-box
+    :hook (company-mode . company-box-mode))
+
+  (use-package dap-mode
+    :config
+    (dap-mode 1)
+    (dap-ui-mode 1)
+    (dap-tooltip-mode 1)
+    (tooltip-mode 1))
+
+  (add-hook 'dap-stopped-hook
+	    (lambda (arg) (call-interactively #'dap-hydra)))
 
   (setq lsp-prefer-capf t)
 #+END_SRC
@@ -812,8 +829,8 @@
 	(mapcar (lambda (theme) (load-theme theme t)) current-themes)
 	result)))
 
-  (advice-add #'org-export-to-file :around (apply-partially #'@-publish-theme 'dracula))
-  (advice-add #'org-export-to-buffer :around (apply-partially #'@-publish-theme 'dracula))
+  (advice-add #'org-export-to-file :around (apply-partially #'@-publish-theme 'doom-snazzy))
+  (advice-add #'org-export-to-buffer :around (apply-partially #'@-publish-theme 'doom-snazzy))
 
   ;; force publish whole site
   (use-package htmlize)
@@ -912,36 +929,46 @@
 
 ** Functions
 #+BEGIN_SRC emacs-lisp
-(use-package ido-completing-read+)
-(defun @-insert-src-block (src-code-type)
-  "Insert a `SRC-CODE-TYPE' type source code block in org-mode."
-  (interactive
-   (let ((src-code-types
-          '("emacs-lisp" "python" "C" "sh" "java" "js" "clojure" "C++" "css"
-            "calc" "asymptote" "dot" "gnuplot" "ledger" "lilypond" "mscgen"
-            "octave" "oz" "plantuml" "R" "sass" "screen" "sql" "awk" "ditaa"
-            "haskell" "latex" "lisp" "matlab" "ocaml" "org" "perl" "ruby"
-            "scheme" "sqlite" "html")))
-     (list (ido-completing-read+ "Source code type: " src-code-types))))
-  (progn
-    (newline-and-indent)
-    (insert (format "\n#+BEGIN_SRC %s\n" src-code-type))
-    (newline-and-indent)
-    (insert "#+END_SRC\n")
-    (previous-line 2)
-    (org-edit-src-code)))
+  (use-package ido-completing-read+)
+  (defun @-insert-src-block (src-code-type)
+    "Insert a `SRC-CODE-TYPE' type source code block in org-mode."
+    (interactive
+     (let ((src-code-types
+	    '("emacs-lisp" "python" "C" "sh" "java" "js" "clojure" "C++" "css"
+	      "calc" "asymptote" "dot" "gnuplot" "ledger" "lilypond" "mscgen"
+	      "octave" "oz" "plantuml" "R" "sass" "screen" "sql" "awk" "ditaa"
+	      "haskell" "latex" "lisp" "matlab" "ocaml" "org" "perl" "ruby"
+	      "scheme" "sqlite" "html" "go")))
+       (list (ido-completing-read+ "Source code type: " src-code-types))))
+    (progn
+      (newline-and-indent)
+      (insert (format "\n#+BEGIN_SRC %s\n" src-code-type))
+      (newline-and-indent)
+      (insert "#+END_SRC\n")
+      (previous-line 2)
+      (org-edit-src-code)))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(defun @-close-all-buffers ()
-  (interactive)
-  (mapc 'kill-buffer (buffer-list)))
+  (defun @-close-all-buffers ()
+    (interactive)
+    (mapc 'kill-buffer (buffer-list)))
 
-(defun @-minify-buffer-contents()
-  (interactive)
-  (mark-whole-buffer)
-  (goto-char (point-min))
-  (while (search-forward-regexp "[\s\n]*" nil t) (replace-match "" nil t)))
+  (defun @-minify-buffer-contents()
+    (interactive)
+    (mark-whole-buffer)
+    (goto-char (point-min))
+    (while (search-forward-regexp "[\s\n]*" nil t) (replace-match "" nil t)))
+
+  (defun @-copy-file-name-to-clipboard ()
+    "Copy the current buffer file name to the clipboard."
+    (interactive)
+    (let ((filename (if (equal major-mode 'dired-mode)
+			default-directory
+		      (buffer-file-name))))
+      (when filename
+	(kill-new filename)
+	(message "Copied buffer file name '%s' to the clipboard." filename))))
 #+END_SRC
 ** Keybind
 #+BEGIN_SRC emacs-lisp

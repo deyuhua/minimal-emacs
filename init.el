@@ -20,9 +20,9 @@
  '(lsp-enable-xref t)
  '(lsp-keep-workspace-alive t)
  '(neo-theme 'nerd nil nil "Customized with use-package neotree")
- '(neo-window-width 36)
+ '(neo-window-width 28)
  '(package-selected-packages
-   '(protobuf-mode frame-local ov darkokai-theme spacemacs-theme molokai-theme dirtree dired-sidebar sr-speedbar kaolin-themes lsp-treemacs go-autocomplete auto-complete hydra flyspell-correct-ivy mwim beacon fill-column-indicator minimap nyan-mode org-plus-contrib xcscope multi-term ccls darcula-theme dracula-theme ido-completing-read+ tide python-black pyvenv exec-path-from-shell typescript-mode org-alert org-bullets fiplr pyenv-mode go-guru go-eldoc doom-modeline doom-themes use-package)))
+   '(dap-mode company-box eglot guru-mode grun-mode lsp-mode protobuf-mode frame-local ov darkokai-theme spacemacs-theme molokai-theme dirtree dired-sidebar sr-speedbar kaolin-themes lsp-treemacs go-autocomplete auto-complete hydra flyspell-correct-ivy mwim beacon fill-column-indicator minimap nyan-mode org-plus-contrib xcscope multi-term ccls darcula-theme dracula-theme ido-completing-read+ tide python-black pyvenv exec-path-from-shell typescript-mode org-alert org-bullets fiplr pyenv-mode go-guru go-eldoc doom-modeline doom-themes use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
