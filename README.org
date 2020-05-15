@@ -52,7 +52,7 @@
 (display-battery-mode 1)
 (tool-bar-mode -1)
 (menu-bar-mode -1)
-(toggle-scroll-bar -1)
+;;(toggle-scroll-bar -1)
 (global-auto-revert-mode t)
 (global-hl-line-mode nil)
 
@@ -571,18 +571,35 @@
     (lsp-enable-imenu t)
     (lsp-enable-completion-at-point nil)
     (lsp-enable-file-watchers nil)
+    (lsp-diagnostic-package :flymake)
+    (lsp-prefer-capf t)
+    (read-process-output-max (* 1024 1024))
 
     :config
-    ;; (add-hook 'prog-mode-hook #'lsp)
+    (add-hook 'go-mode-hook #'lsp)
+    (add-hook 'python-mode-hook #'lsp)
+    (add-hook 'c++-mode-hook #'lsp)
+    (add-hook 'c-mode-hook #'lsp)
+    (add-hook 'rust-mode-hook #'lsp)
+    (add-hook 'html-mode-hook #'lsp)
+    (add-hook 'js-mode-hook #'lsp)
+    (add-hook 'typescript-mode-hook #'lsp)
+    (add-hook 'json-mode-hook #'lsp)
+    (add-hook 'yaml-mode-hook #'lsp)
+    (add-hook 'dockerfile-mode-hook #'lsp)
+    (add-hook 'shell-mode-hook #'lsp)
+    (add-hook 'css-mode-hook #'lsp)
 
     (lsp-register-client
      (make-lsp-client :new-connection (lsp-stdio-connection "pyls")
 		      :major-modes '(python-mode)
 		      :server-id 'pyls))
     (setq company-minimum-prefix-length 1
-	  company-idle-delay 0.500) ;; default is 0.2
+	  company-idle-delay 0.100) ;; default is 0.2
     (require 'lsp-clients) 
     :commands lsp)
+
+  (use-package helm-lsp)
 
   (use-package company-lsp
     :ensure t
@@ -617,14 +634,6 @@
     :config
     (setq lsp-ui-sideline-ignore-duplicate t)
     (add-hook 'lsp-mode-hook 'lsp-ui-mode))
-
-  (use-package eglot
-    :ensure t
-    :config
-    (add-hook 'prog-mode-hook 'eglot-ensure))
-
-  (use-package company-box
-    :hook (company-mode . company-box-mode))
 
   (use-package dap-mode
     :config
@@ -781,32 +790,89 @@
 
 ** OrgMode
 #+BEGIN_SRC emacs-lisp
-(setq org-todo-keywords 
-      '((sequence "TODO(t)" "INPROGRESS(i)" "WAITING(w)" "REVIEW(r)" "|" "DONE(d)" "CANCELED(c)")))
+  (setq org-todo-keywords 
+	'((sequence "TODO(t)" "INPROGRESS(i)" "WAITING(w)" "REVIEW(r)" "|" "DONE(d)" "CANCELED(c)")))
 
-(setq org-todo-keyword-faces
-      '(("TODO" . org-warning)
-	("INPROGRESS" . "yellow")
-	("WAITING" . "purple")
-	("REVIEW" . "orange")
-	("DONE" . "green")
-	("CANCELED" .  "red")))
+  (setq org-todo-keyword-faces
+	'(("TODO" . org-warning)
+	  ("INPROGRESS" . "yellow")
+	  ("WAITING" . "purple")
+	  ("REVIEW" . "orange")
+	  ("DONE" . "green")
+	  ("CANCELED" .  "red")))
+
+  ;; org files include in agenda view
+  (defvar org-icloud-path "/Users/deyuhua/Library/Mobile Documents/iCloud~com~appsonthemove~beorg/Documents/org/")
+  (defvar ep-work-org (concat org-icloud-path "work.org"))
+  (defvar ep-learning-org (concat org-icloud-path "learning.org"))
+  (defvar ep-personal-org (concat org-icloud-path "personal.org"))
+  (defvar ep-inbox-org (concat org-icloud-path "inbox.org"))
+  (defvar ep-habit-org (concat org-icloud-path "habit.org"))
+
+  (setq org-agenda-files (list ep-work-org
+			       ep-learning-org
+			       ep-personal-org
+			       ep-inbox-org
+			       ep-habit-org))
+  (setq org-archive-location (concat  "/Users/deyuhua/Workspace/Archive/Orgs/" "%s_archive::"))
+
+  ;; org caputer settings
+  (setq org-default-notes-file ep-inbox-org)
+  (setq org-startup-with-inline-images t)
+  (define-key global-map "\C-cc" 'org-capture)
+
+  (setq org-capture-templates
+	'(("t" "Todo" entry (file+headline ep-inbox-org "代办事项")
+	   "* TODO %?\n %i\n")))
+
+  (setq org-refile-targets
+	'((ep-learning-org :maxlevel . 1)
+	  (ep-work-org :maxlevel . 1)
+	  (ep-personal-org :maxlevel . 1)
+	  (ep-habit-org :maxlevel . 1)))
+
+  ;; open agenda view when emacs startup
+  (defun @-agenda-view()
+    (interactive)
+    (progn
+      (kill-current-buffer)
+      (org-agenda 'a "a")
+      (delete-other-windows)))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(use-package org-bullets
-  :config
-  (progn
-    (setq org-bullets-bullet-list '("☯" "✿" "✚" "◉" "❀"))
-    (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
-    ))
+  (use-package org-bullets
+    :config
+    (progn
+      (setq org-bullets-bullet-list '("☯" "✿" "✚" "◉" "❀"))
+      (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
+      ))
 
-(use-package org-alert
-  :defer t
-  :config
-  (progn
-    (setq alert-default-style 'libnotify)
-    ))
+  (use-package org-alert
+    :defer t
+    :config
+    (progn
+      (setq alert-default-style 'libnotify)
+      ))
+
+  ;; pomodoro tech setting
+  (use-package org-pomodoro
+    :ensure t
+    :commands (org-pomodoro)
+    :config
+    (setq alert-user-configuration (quote ((((:category . "org-pomodoro")) libnotify nil))))
+    (setq org-pomodoro-length 25)
+    (setq org-pomodoro-short-break-length 5)
+    (setq org-pomodoro-long-break-length 15)
+    (setq org-pomodoro-format " ⏰  %s ")
+    (setq org-pomodoro-long-break-format "  ☕☕☕  %s ")
+    (setq org-pomodoro-short-break-format "  ☕  %s ")
+    (setq org-pomodoro-ticking-sound-p nil)
+    (add-hook 'org-pomodoro-finished-hook
+	      (lambda () (call-process "terminal-notifier" nil 0 nil
+				       "-message" "小憩一会吧！"
+				       "-sender" "org.gnu.Emacs")))
+    )
 #+END_SRC
 
 *** Org Publish
